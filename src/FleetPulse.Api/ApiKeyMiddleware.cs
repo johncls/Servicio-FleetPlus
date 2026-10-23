@@ -17,15 +17,14 @@ public sealed class ApiKeyMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        if (HttpMethods.IsGet(context.Request.Method)
-            && context.Request.Path.StartsWithSegments("/health"))
+        if (!RequiresApiKey(context.Request.Path))
         {
             await _next(context);
             return;
         }
 
-        if (!context.Request.Headers.TryGetValue("X-Api-Key", out var provided)
-            || !Matches(provided.ToString()))
+        var provided = ReadApiKey(context);
+        if (provided is null || !Matches(provided))
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsJsonAsync(new { error = "No autorizado." });
@@ -33,6 +32,38 @@ public sealed class ApiKeyMiddleware
         }
 
         await _next(context);
+    }
+
+    private static bool RequiresApiKey(PathString path) =>
+        path.StartsWithSegments("/api") || path.StartsWithSegments("/hubs");
+
+    private static string? ReadApiKey(HttpContext context)
+    {
+        if (context.Request.Headers.TryGetValue("X-Api-Key", out var header)
+            && !string.IsNullOrWhiteSpace(header.ToString()))
+        {
+            return header.ToString();
+        }
+
+        if (context.Request.Headers.TryGetValue("Authorization", out var authorization))
+        {
+            const string bearer = "Bearer ";
+            var value = authorization.ToString();
+            if (value.StartsWith(bearer, StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(value[bearer.Length..]))
+            {
+                return value[bearer.Length..].Trim();
+            }
+        }
+
+        if (context.Request.Path.StartsWithSegments("/hubs")
+            && context.Request.Query.TryGetValue("access_token", out var accessToken)
+            && !string.IsNullOrWhiteSpace(accessToken.ToString()))
+        {
+            return accessToken.ToString();
+        }
+
+        return null;
     }
 
     private bool Matches(string provided)

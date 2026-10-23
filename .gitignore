@@ -3,3 +3,5 @@
 bin/
 obj/
 .vs/
+web/node_modules/
+src/FleetPulse.Api/wwwroot/

@@ -2,6 +2,7 @@ using FleetPulse.Application;
 using FleetPulse.Infrastructure.Health;
 using FleetPulse.Infrastructure.Messaging;
 using FleetPulse.Infrastructure.Postgres;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Polly;
@@ -62,7 +63,10 @@ public static class FleetPulseServices
             return PostgresResilience.Create(TimeSpan.FromSeconds(timeout));
         });
 
+        services.AddSignalR();
         services.AddSingleton<ITelemetryEventStore, PostgresTelemetryEventStore>();
+        services.AddSingleton<IFleetQuery, PostgresFleetQuery>();
+        services.AddSingleton<IVehiclePositionNotifier, SignalRVehiclePositionNotifier>();
         services.AddSingleton<RabbitMqConnection>();
         services.AddSingleton<ITelemetryBatchPublisher, RabbitMqTelemetryPublisher>();
         services.AddSingleton(serviceProvider =>
@@ -70,8 +74,10 @@ public static class FleetPulseServices
             var delivery = serviceProvider.GetRequiredService<IOptions<TelemetryDeliveryOptions>>().Value;
             return new TelemetryMessageProcessor(
                 serviceProvider.GetRequiredService<ITelemetryEventStore>(),
+                serviceProvider.GetRequiredService<IVehiclePositionNotifier>(),
                 serviceProvider.GetRequiredService<TimeProvider>(),
-                delivery.MaxAttempts);
+                delivery.MaxAttempts,
+                serviceProvider.GetRequiredService<ILogger<TelemetryMessageProcessor>>());
         });
         services.AddSingleton<IngestTelemetryBatchHandler>();
         services.AddHostedService<TelemetryConsumerHostedService>();

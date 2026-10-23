@@ -11,10 +11,13 @@ docker compose up -d --build
 
 `POSTGRES_PORT` es el puerto publicado en el host. Dentro de la red de Compose, PostgreSQL escucha en el 5432. Si ese puerto del host ya está ocupado, cámbialo en `.env`.
 
-La API queda en `http://localhost:8080`.
+La API y el portal quedan en `http://localhost:8080`.
 
+- `GET /` muestra la flota. La clave se escribe en la página y no viaja dentro del código del frontend.
 - `GET /health` comprueba PostgreSQL y RabbitMQ.
-- `POST /api/telemetry/batches` recibe el lote. Requiere la cabecera `X-Api-Key`.
+- `GET /api/vehicles` devuelve la posición actual. `GET /api/vehicles/{id}/positions` devuelve el historial. Un vehículo desconocido responde 404; un rango sin puntos responde una lista vacía.
+- `POST /api/telemetry/batches` recibe el lote. Las rutas `/api` y `/hubs` requieren `X-Api-Key`.
+- SignalR publica `positionUpdated` en `/hubs/telemetry` cuando un evento nuevo queda guardado. El portal no reemplaza una posición reciente con una más antigua.
 - Responde `202` solo después de que RabbitMQ confirma la publicación. El consumidor confirma el mensaje solo después de que `telemetry.ingest_event` termina.
 - Un `eventId` repetido no duplica el historial. Un evento más antiguo no reemplaza una posición más reciente.
 - Un fallo transitorio se reintenta hasta 5 veces, con espera creciente, y después pasa a `fleetpulse.telemetry.dlq`.
@@ -22,8 +25,9 @@ La API queda en `http://localhost:8080`.
 
 Las migraciones viven en `infra/postgres/migrations` y se aplican al crear el volumen. No hay borrado automático del historial: la retención queda pendiente de una ventana operativa.
 
-Para ejecutar las pruebas hace falta el SDK de .NET 8:
+Para ejecutar las pruebas hace falta el SDK de .NET 8 y Node.js:
 
 ```bash
 dotnet test FleetPulse.sln
+cd web && npm test && npm run build
 ```
