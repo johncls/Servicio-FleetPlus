@@ -1,0 +1,167 @@
+
+---
+description: Reglas de arquitectura, seguridad y calidad para FleetPulse
+alwaysApply: true
+---
+
+# 1. Contexto del proyecto
+
+Desarrollar FleetPulse, un portal corporativo para monitorear
+flotas de vehículos en tiempo real.
+
+El sistema debe incluir:
+- Backend en ASP.NET Core. primero hacer un servicio y esperar a seguir las instrucciones, se debe tener buenas practicas de principios solid y patron DDD
+- Mensajería asíncrona con RabbitMQ.
+- Persistencia con PostgreSQL y TimescaleDB.
+- Frontend con React y TypeScript.
+- Comunicación en tiempo real mediante SignalR.
+- Agente de IA para consultas operativas.
+- Aplicación móvil con React Native, Expo y SQLite.
+- Pruebas de carga con k6.
+- Infraestructura local con Docker Compose.
+- Infraestructura cloud con Terraform.
+- Automatización mediante GitHub Actions y Fastlane.
+
+# 2. Arquitectura y diseño
+
+- Aplicar Clean Architecture y separación de responsabilidades.
+- Mantener el dominio independiente de la infraestructura.
+- Separar las capas de dominio, aplicación, infraestructura y API.
+- Utilizar inyección de dependencias.
+- Evitar el acoplamiento innecesario entre módulos.
+- Aplicar SOLID cuando aporte claridad y mantenibilidad.
+- Utilizar operaciones asíncronas y CancellationToken en .NET.
+- Evitar crear microservicios independientes sin una justificación
+  funcional u operativa.
+- Antes de realizar cambios importantes, explicar el plan y
+  los archivos que serán modificados.
+
+# 3. Ingesta y procesamiento de telemetría
+
+Cada evento de telemetría debe incluir:
+- eventId único y estable.
+- vehicleId.
+- timestamp en UTC.
+- latitud y longitud.
+- número de secuencia.
+
+Además:
+- Validar coordenadas, fechas y estructura de los eventos.
+- Definir límites de tamaño para los lotes recibidos.
+- Procesar los eventos de forma asíncrona.
+- Implementar idempotencia persistente.
+- Tolerar mensajes duplicados y eventos fuera de orden.
+- No asumir que el sistema garantiza entrega exactamente una vez.
+- Gestionar reintentos, acknowledgements y mensajes fallidos.
+- Configurar una estrategia de dead-letter queue.
+- Evitar que un evento antiguo sobrescriba un estado más reciente.
+- No confirmar un mensaje antes de completar el procesamiento
+  durable requerido por la arquitectura.
+
+# 4. Persistencia y datos
+
+- Utilizar PostgreSQL y TimescaleDB para el historial temporal.
+- Separar el historial de telemetría del estado actual del vehículo.
+- Crear índices y restricciones que respondan a las consultas reales.
+- Utilizar migraciones versionadas.
+- Evitar consultas innecesarias y operaciones N+1.
+- Utilizar consultas parametrizadas.
+- Diseñar las operaciones de escritura para soportar reintentos.
+- Justificar las decisiones de almacenamiento y retención.
+- No almacenar secretos en el código ni en los archivos versionados.
+
+# 5. Resiliencia y tolerancia a fallos
+
+- Implementar Circuit Breaker con Polly donde corresponda.
+- Definir tiempos de espera para dependencias remotas.
+- Utilizar reintentos limitados con backoff exponencial y jitter.
+- Reintentar únicamente operaciones seguras o idempotentes.
+- Evitar reintentos infinitos.
+- Diferenciar errores transitorios de errores permanentes.
+- Implementar health checks y registros estructurados.
+- Evitar exponer información sensible en los logs.
+
+# 6. Agente de inteligencia artificial
+
+- Integrar el agente mediante Semantic Kernel o una abstracción
+  equivalente.
+- Exponer herramientas explícitas para consultar vehículos,
+  telemetría e incidentes.
+- Utilizar servicios de aplicación para acceder a los datos.
+- Restringir las herramientas a las operaciones autorizadas.
+- No permitir que el modelo ejecute SQL arbitrario ni comandos
+  de sistema.
+- Validar los argumentos generados por el modelo.
+- Aplicar autorización, límites de resultados y timeouts.
+- Fundamentar las respuestas en datos reales del sistema.
+- Diferenciar los datos ausentes de los resultados vacíos.
+- No inventar vehículos, ubicaciones, alertas ni métricas.
+- Si se utiliza un modo simulado, identificarlo claramente.
+- No afirmar que se está utilizando un LLM real si se usa
+  únicamente lógica determinista.
+
+# 7. Frontend web
+
+- Utilizar React con TypeScript.
+- Mantener componentes pequeños y reutilizables.
+- Separar presentación, estado y acceso a datos.
+- Utilizar SignalR para las actualizaciones en tiempo real.
+- Gestionar estados de carga, desconexión y error.
+- No utilizar datos simulados como si fueran datos reales.
+- Centralizar la configuración mediante variables de entorno.
+- Ejecutar las pruebas, el análisis estático y el build disponible.
+
+# 8. Aplicación móvil offline-first
+
+- Utilizar React Native, Expo y SQLite.
+- Persistir cada evento localmente antes de intentar enviarlo.
+- Asignar identificadores estables a los eventos.
+- Mantener una cola durable de sincronización.
+- Sincronizar los eventos por lotes al recuperar la conexión.
+- Conservar los eventos pendientes cuando falle el envío.
+- Marcar o eliminar eventos locales únicamente después de
+  recibir la confirmación de aceptación del servidor.
+- Tolerar duplicados, reintentos y cierres inesperados.
+- Documentar las limitaciones de ejecución en segundo plano.
+
+# 9. Seguridad
+
+- No incluir contraseñas, tokens ni claves API en el repositorio.
+- Utilizar archivos de entorno locales y un .env.example
+  sin credenciales reales.
+- Validar las entradas en los límites de la aplicación.
+- Aplicar autenticación y autorización donde corresponda.
+- No confiar en datos proporcionados por el cliente o por el LLM.
+- Evitar exponer información sensible en respuestas y registros.
+- No ejecutar despliegues ni operaciones destructivas sin aprobación.
+
+# 10. Pruebas y calidad
+
+- Crear pruebas unitarias para las reglas de negocio.
+- Crear pruebas de integración para persistencia y mensajería.
+- Probar la deduplicación y el procesamiento de eventos fuera
+  de orden.
+- Probar los fallos de dependencias y la recuperación.
+- Utilizar k6 para simular cientos de vehículos.
+- Inyectar duplicados y errores de forma controlada.
+- Verificar la integridad de los datos después de las pruebas.
+- No afirmar que una prueba pasó sin ejecutarla.
+- Informar claramente las pruebas que no se pudieron ejecutar.
+
+# 11. Forma de trabajo del agente
+
+Antes de implementar una funcionalidad:
+1. Inspeccionar el código y las convenciones existentes.
+2. Identificar los requisitos y las dependencias.
+3. Proponer una solución y explicar sus decisiones.
+4. Identificar riesgos de seguridad y escalabilidad.
+5. Implementar en incrementos pequeños y verificables.
+6. Ejecutar las pruebas disponibles.
+7. Corregir los errores encontrados.
+8. Resumir los archivos modificados y los resultados reales.
+
+Si se detecta una propuesta insegura, no escalable o contraria
+a estas reglas, explicar el problema y proponer una alternativa.
+
+No inventar resultados, funcionalidades ni despliegues.
+Documentar las limitaciones y las decisiones arquitectónicas.
