@@ -21,5 +21,47 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    container_name: fleetplus-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  fleetpulse-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fleetpulse-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__FleetPlus: Host=fleetplus-db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Timeout=5;Command Timeout=5
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__User: ${RABBITMQ_USER}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD}
+      Telemetry__ApiKey: ${TELEMETRY_API_KEY}
+      Telemetry__MaxAttempts: 5
+      Telemetry__DatabaseTimeoutSeconds: 5
+    ports:
+      - "${FLEETPULSE_HTTP_PORT:-8080}:8080"
+    depends_on:
+      fleetplus-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   fleetplus_pgdata:
