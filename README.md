@@ -18,6 +18,7 @@ La API y el portal quedan en `http://localhost:8080`. Swagger está en `http://l
 - `GET /api/vehicles` devuelve la posición actual. `GET /api/vehicles/{id}/positions` devuelve el historial. Un vehículo desconocido responde 404; un rango sin puntos responde una lista vacía.
 - `POST /api/telemetry/batches` recibe el lote. Las rutas `/api` y `/hubs` requieren `X-Api-Key`.
 - SignalR publica `positionUpdated` en `/hubs/telemetry` cuando un evento nuevo queda guardado. El portal no reemplaza una posición reciente con una más antigua.
+- `POST /api/agent/questions` responde con los datos guardados. El modo actual es determinista: no usa un modelo de lenguaje y no inventa vehículos, posiciones ni incidentes. No hay registro de incidentes.
 - Responde `202` solo después de que RabbitMQ confirma la publicación. El consumidor confirma el mensaje solo después de que `telemetry.ingest_event` termina.
 - Un `eventId` repetido no duplica el historial. Un evento más antiguo no reemplaza una posición más reciente.
 - Un fallo transitorio se reintenta hasta 5 veces, con espera creciente, y después pasa a `fleetpulse.telemetry.dlq`.

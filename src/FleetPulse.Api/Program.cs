@@ -121,6 +121,18 @@ app.MapGet("/api/vehicles/{vehicleId:guid}/positions", async (
         : Results.NotFound(new { error = "El vehículo no existe." });
 });
 
+app.MapPost("/api/agent/questions", async (
+    AgentQuestionRequest request,
+    IFleetAgent agent,
+    CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Question))
+        return Results.BadRequest(new { error = "La pregunta es obligatoria." });
+
+    var reply = await agent.AskAsync(request.Question, cancellationToken);
+    return Results.Ok(reply);
+});
+
 app.MapPost("/api/telemetry/batches", async (
     IngestBatchRequest request,
     IngestTelemetryBatchHandler handler,
