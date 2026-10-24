@@ -2,12 +2,43 @@ using FleetPulse.Api;
 using FleetPulse.Api.Contracts;
 using FleetPulse.Application;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.OpenApi.Models;
 
 LocalEnvFile.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFleetPulse(builder.Configuration);
 builder.Services.AddProblemDetails();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "FleetPulse",
+        Version = "v1"
+    });
+    options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Name = "X-Api-Key",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Description = "Valor de TELEMETRY_API_KEY"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "ApiKey"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
@@ -32,6 +63,12 @@ app.UseExceptionHandler(handler =>
 });
 
 app.UseMiddleware<ApiKeyMiddleware>();
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "FleetPulse");
+    options.RoutePrefix = "swagger";
+});
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapHealthChecks("/health");

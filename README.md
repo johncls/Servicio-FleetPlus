@@ -11,7 +11,7 @@ docker compose up -d --build
 
 `POSTGRES_PORT` es el puerto publicado en el host. Dentro de la red de Compose, PostgreSQL escucha en el 5432. Si ese puerto del host ya está ocupado, cámbialo en `.env`.
 
-La API y el portal quedan en `http://localhost:8080`.
+La API y el portal quedan en `http://localhost:8080`. Swagger está en `http://localhost:8080/swagger`. En Authorize usa la cabecera `X-Api-Key` con el valor de `TELEMETRY_API_KEY`.
 
 - `GET /` muestra la flota. La clave se escribe en la página y no viaja dentro del código del frontend.
 - `GET /health` comprueba PostgreSQL y RabbitMQ.
