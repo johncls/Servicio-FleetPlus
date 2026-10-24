@@ -26,9 +26,18 @@ La API y el portal quedan en `http://localhost:8080`. Swagger está en `http://l
 
 Las migraciones viven en `infra/postgres/migrations` y se aplican al crear el volumen. No hay borrado automático del historial: la retención queda pendiente de una ventana operativa.
 
+La app móvil está en `mobile`. Guarda cada posición en SQLite antes de enviarla y conserva la cola si no hay red. Solo marca el evento como aceptado cuando `POST /api/telemetry/batches` responde 202. Un reintento usa el mismo `eventId`. La clave se escribe en el teléfono y no va en el repositorio.
+
+Desde el navegador, la app puede llamar al servicio en otro puerto. El servicio acepta ese origen solo si es esta máquina o una dirección de la red local. La clave sigue siendo obligatoria en la petición real.
+
+La captura y la sincronización ocurren con la app abierta. No hay seguimiento en segundo plano: Android no relanza el proceso al cerrarlo, e iOS detiene la ubicación si el usuario termina la app. Un cierre a medias deja los pendientes en SQLite. En el teléfono, la dirección del servicio tiene que ser la IP de la máquina, no `localhost`. El perfil local escucha en todas las interfaces del puerto 8080 para que el teléfono pueda llegar.
+
 Para ejecutar las pruebas hace falta el SDK de .NET 8 y Node.js:
 
 ```bash
 dotnet test FleetPulse.sln
 cd web && npm test && npm run build
+cd mobile && npm test && npx tsc --noEmit
 ```
+
+Para abrir la app: `cd mobile && npx expo start`.

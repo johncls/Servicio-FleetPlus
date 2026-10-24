@@ -8,6 +8,15 @@ LocalEnvFile.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFleetPulse(builder.Configuration);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalClients", policy =>
+    {
+        policy.SetIsOriginAllowed(IsLocalDevelopmentOrigin)
+            .AllowAnyHeader()
+            .WithMethods("GET", "POST", "OPTIONS");
+    });
+});
 builder.Services.AddProblemDetails();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -62,6 +71,7 @@ app.UseExceptionHandler(handler =>
     });
 });
 
+app.UseCors("LocalClients");
 app.UseMiddleware<ApiKeyMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI(options =>
@@ -181,5 +191,28 @@ app.MapFallback(async context =>
 });
 
 app.Run();
+
+static bool IsLocalDevelopmentOrigin(string origin)
+{
+    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+        return false;
+
+    if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        return false;
+
+    if (uri.IsLoopback)
+        return true;
+
+    if (!System.Net.IPAddress.TryParse(uri.Host, out var address)
+        || address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+    {
+        return false;
+    }
+
+    var bytes = address.GetAddressBytes();
+    return bytes[0] == 10
+        || (bytes[0] == 192 && bytes[1] == 168)
+        || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31);
+}
 
 public partial class Program;
