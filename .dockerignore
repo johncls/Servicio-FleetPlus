@@ -1,0 +1,9 @@
+**/.git
+**/.env
+**/bin
+**/obj
+tests
+README.md~
+**/*.md
+web/node_modules
+src/FleetPulse.Api/wwwroot
