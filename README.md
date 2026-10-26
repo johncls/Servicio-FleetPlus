@@ -38,6 +38,9 @@ Para ejecutar las pruebas hace falta el SDK de .NET 8 y Node.js:
 dotnet test FleetPulse.sln
 cd web && npm test && npm run build
 cd mobile && npm test && npx tsc --noEmit
+k6 run tests/load/telemetry.js
 ```
+
+`k6 run` simula 200 vehículos contra el servicio local. También reintenta un `eventId`, rechaza un lote inválido y comprueba que un evento antiguo no pisa la posición vigente. Los vehículos de esa prueba usan identificadores `a1000000-0000-4000-8000-*`. La clave sale de `TELEMETRY_API_KEY` si está definida; si no, usa `change-me`. `BASE_URL` cambia el destino.
 
 Para abrir la app: `cd mobile && npx expo start`.
