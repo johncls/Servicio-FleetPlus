@@ -1,5 +1,13 @@
 .env
 *.log
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.mobileprovision
+*.p12
+*.p8
+*.jks
 bin/
 obj/
 .vs/

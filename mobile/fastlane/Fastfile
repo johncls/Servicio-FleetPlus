@@ -1,0 +1,20 @@
+default_platform(:android)
+
+platform :android do
+  desc "Ejecuta las pruebas de la app. No publica en ninguna tienda."
+  lane :test do
+    sh("npm", "test")
+  end
+
+  desc "La publicación en Google Play queda pendiente de credenciales."
+  lane :beta do
+    UI.user_error!("No hay credenciales de Google Play. No se publica la app.")
+  end
+end
+
+platform :ios do
+  desc "La publicación en App Store queda pendiente de credenciales."
+  lane :beta do
+    UI.user_error!("No hay credenciales de App Store. No se publica la app.")
+  end
+end

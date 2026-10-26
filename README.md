@@ -46,3 +46,14 @@ k6 run tests/load/telemetry.js
 Para abrir la app: `cd mobile && npx expo start`.
 
 Prometheus queda en `http://localhost:9090` y Grafana en `http://localhost:3000`. El usuario inicial es `admin` y la contraseña es `GRAFANA_ADMIN_PASSWORD` (en el ejemplo, `change-me`). Grafana ya tiene a Prometheus como origen de datos.
+
+La definición de nube está en `infra/terraform`. `create_cloud_resources` vale `false`, así que un plan no crea el clúster, el grupo de logs ni el parámetro de la clave. La clave entra como variable sensible y no tiene valor en el repositorio. No se ha ejecutado `terraform apply`.
+
+```bash
+cd infra/terraform
+terraform init -backend=false
+terraform fmt -check
+terraform validate
+```
+
+GitHub Actions, en `.github/workflows/ci.yml`, ejecuta las pruebas de dominio, aplicación, portal y la app móvil. La app usa `bundle exec fastlane test` desde `mobile`. Los carriles `beta` de Android e iOS se detienen a propósito: no hay credenciales de tienda y no se publica nada. Las pruebas de infraestructura contra Timescale siguen siendo locales, porque el flujo no levanta la base.
