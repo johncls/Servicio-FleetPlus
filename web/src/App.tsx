@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
-import { fetchPositions, fetchVehicles, FleetApiError, type VehiclePosition } from "./fleetApi";
+import { askAgent, fetchPositions, fetchVehicles, FleetApiError, type VehiclePosition } from "./fleetApi";
 import { mergeVehicle, type VehicleState } from "./mergeVehicle";
 
 type ConnectionStatus = "idle" | "connecting" | "connected" | "disconnected";
@@ -16,6 +16,11 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [positionsError, setPositionsError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("idle");
+  const [question, setQuestion] = useState("");
+  const [agentAnswer, setAgentAnswer] = useState<string | null>(null);
+  const [agentMode, setAgentMode] = useState<string | null>(null);
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeKey)
@@ -114,6 +119,27 @@ export function App() {
     }
   }
 
+  async function onAsk(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = question.trim();
+    if (!text || !activeKey)
+      return;
+
+    setAgentLoading(true);
+    setAgentError(null);
+    try {
+      const reply = await askAgent(text, activeKey);
+      setAgentAnswer(reply.answer);
+      setAgentMode(reply.usesLanguageModel ? reply.mode : "Sin modelo de lenguaje");
+    } catch (caught) {
+      setAgentAnswer(null);
+      setAgentMode(null);
+      setAgentError(caught instanceof FleetApiError ? caught.message : "No se pudo consultar el agente.");
+    } finally {
+      setAgentLoading(false);
+    }
+  }
+
   return (
     <main className="page">
       <header className="header">
@@ -144,6 +170,25 @@ export function App() {
       {loading && <p className="banner">Cargando vehículos…</p>}
       {!loading && activeKey && vehicles.length === 0 && (
         <p className="banner">No hay vehículos con posición registrada.</p>
+      )}
+
+      {activeKey && (
+        <form className="key-form" onSubmit={onAsk}>
+          <label htmlFor="agent-question">Pregunta sobre la flota</label>
+          <div className="key-row">
+            <input
+              id="agent-question"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+            />
+            <button type="submit" disabled={agentLoading || question.trim().length === 0}>
+              {agentLoading ? "Consultando…" : "Preguntar"}
+            </button>
+          </div>
+          {agentMode && <p className="banner">{agentMode}</p>}
+          {agentAnswer && <p className="banner">{agentAnswer}</p>}
+          {agentError && <p className="banner error" role="alert">{agentError}</p>}
+        </form>
       )}
 
       {vehicles.length > 0 && (

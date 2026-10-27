@@ -1,5 +1,10 @@
 namespace FleetPulse.Api.Contracts;
 
+public sealed class AgentQuestionRequest
+{
+    public string Question { get; init; } = "";
+}
+
 public sealed class IngestBatchRequest
 {
     public IReadOnlyList<TelemetryEventRequest> Events { get; init; } = [];

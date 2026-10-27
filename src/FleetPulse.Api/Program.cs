@@ -2,12 +2,52 @@ using FleetPulse.Api;
 using FleetPulse.Api.Contracts;
 using FleetPulse.Application;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.OpenApi.Models;
 
 LocalEnvFile.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddFleetPulse(builder.Configuration);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalClients", policy =>
+    {
+        policy.SetIsOriginAllowed(IsLocalDevelopmentOrigin)
+            .AllowAnyHeader()
+            .WithMethods("GET", "POST", "OPTIONS");
+    });
+});
 builder.Services.AddProblemDetails();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "FleetPulse",
+        Version = "v1"
+    });
+    options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    {
+        Name = "X-Api-Key",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Description = "Valor de TELEMETRY_API_KEY"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "ApiKey"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
@@ -31,7 +71,14 @@ app.UseExceptionHandler(handler =>
     });
 });
 
+app.UseCors("LocalClients");
 app.UseMiddleware<ApiKeyMiddleware>();
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "FleetPulse");
+    options.RoutePrefix = "swagger";
+});
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapHealthChecks("/health");
@@ -84,6 +131,18 @@ app.MapGet("/api/vehicles/{vehicleId:guid}/positions", async (
         : Results.NotFound(new { error = "El vehículo no existe." });
 });
 
+app.MapPost("/api/agent/questions", async (
+    AgentQuestionRequest request,
+    IFleetAgent agent,
+    CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Question))
+        return Results.BadRequest(new { error = "La pregunta es obligatoria." });
+
+    var reply = await agent.AskAsync(request.Question, cancellationToken);
+    return Results.Ok(reply);
+});
+
 app.MapPost("/api/telemetry/batches", async (
     IngestBatchRequest request,
     IngestTelemetryBatchHandler handler,
@@ -132,5 +191,28 @@ app.MapFallback(async context =>
 });
 
 app.Run();
+
+static bool IsLocalDevelopmentOrigin(string origin)
+{
+    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+        return false;
+
+    if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+        return false;
+
+    if (uri.IsLoopback)
+        return true;
+
+    if (!System.Net.IPAddress.TryParse(uri.Host, out var address)
+        || address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+    {
+        return false;
+    }
+
+    var bytes = address.GetAddressBytes();
+    return bytes[0] == 10
+        || (bytes[0] == 192 && bytes[1] == 168)
+        || (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31);
+}
 
 public partial class Program;

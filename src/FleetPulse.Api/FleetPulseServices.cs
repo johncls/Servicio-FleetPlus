@@ -80,6 +80,8 @@ public static class FleetPulseServices
                 serviceProvider.GetRequiredService<ILogger<TelemetryMessageProcessor>>());
         });
         services.AddSingleton<IngestTelemetryBatchHandler>();
+        services.AddSingleton<FleetAgentTools>();
+        services.AddSingleton<IFleetAgent, DeterministicFleetAgent>();
         services.AddHostedService<TelemetryConsumerHostedService>();
 
         services.AddHealthChecks()
