@@ -4,6 +4,10 @@ MVP de un portal para monitorear una flota. Un solo proceso ASP.NET Core valida 
 
 No es un conjunto de microservicios. El circuit breaker protege la llamada a PostgreSQL dentro de ese mismo proceso. Separar la ingesta en varios servicios no aportaba un límite operativo y sí añadía fallos de red.
 
+La app envía el lote al servicio. El servicio lo publica en RabbitMQ y el consumidor lo guarda en la base. SignalR avisa la posición nueva. La consulta de la flota y del historial vuelve al servicio por la API REST.
+
+![Flujo de telemetría: app, servicio, cola, base, SignalR y consulta](docs/arquitectura.png)
+
 ## Ejecución local
 
 Hace falta Docker, el SDK de .NET 8 y Node.js. La contraseña y la clave de API no están en el repositorio.
